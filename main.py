@@ -1,22 +1,40 @@
 import asyncio
 
-from app.agent.manus import Manus
+from app.agent.nahida import Nahida
 from app.logger import logger
+from app.async_timer import AsyncTimer
+import traceback
 
 
 async def main():
-    agent = Manus()
-    try:
-        prompt = input("Enter your prompt: ")
-        if not prompt.strip():
-            logger.warning("Empty prompt provided.")
-            return
-
-        logger.warning("Processing your request...")
-        await agent.run(prompt)
-        logger.info("Request processing completed.")
-    except KeyboardInterrupt:
-        logger.warning("Operation interrupted.")
+    UserInfoPrompt = """#User Info:
+Name:
+Profile:
+"""
+    loop = asyncio.get_event_loop()
+    agent = Nahida(extra_system_prompt=UserInfoPrompt)
+    while True:
+        try:
+            prompt = await loop.run_in_executor(None, input, ">>>")
+            may_internal_cmd = prompt.lower()
+            if may_internal_cmd == "exit":
+                logger.info("Goodbye!")
+                break
+            elif may_internal_cmd == "timers":
+                logger.info('\n'.join([str(t) for t in AsyncTimer.timers]))
+                continue
+            elif may_internal_cmd == "llmreload":
+                agent.llm.reload()
+                continue
+            # logger.warning("Processing your request...")
+            if prompt:
+                result  = await agent.run(prompt)
+                print(result)
+        except (Exception, asyncio.CancelledError, KeyboardInterrupt, EOFError)  as e:
+            logger.error(e)
+            traceback.print_exc()
+    await AsyncTimer.close()
+    agent.close()
 
 
 if __name__ == "__main__":

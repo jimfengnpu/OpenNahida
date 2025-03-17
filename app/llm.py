@@ -1,3 +1,4 @@
+import json
 from typing import Dict, List, Optional, Union
 
 import tiktoken
@@ -49,9 +50,11 @@ class LLM:
         if not hasattr(self, "client"):  # Only initialize if not already initialized
             llm_config = llm_config or config.llm
             llm_config = llm_config.get(config_name, llm_config["default"])
+            self.config_name = config_name
             self.model = llm_config.model
             self.max_tokens = llm_config.max_tokens
             self.temperature = llm_config.temperature
+            self.top_p = llm_config.top_p
             self.api_type = llm_config.api_type
             self.api_key = llm_config.api_key
             self.api_version = llm_config.api_version
@@ -153,6 +156,22 @@ class LLM:
             return f"Request may exceed input token limit (Current: {self.total_input_tokens}, Needed: {input_tokens}, Max: {self.max_input_tokens})"
 
         return "Token limit exceeded"
+
+    def reload(self, llm_config: Optional[LLMSettings] = None):
+        config_name = self.config_name
+        config.reload()
+        llm_config = llm_config or config.llm
+        llm_config = llm_config.get(config_name, llm_config["default"])
+        self.config_name = config_name
+        self.model = llm_config.model
+        self.max_tokens = llm_config.max_tokens
+        self.temperature = llm_config.temperature
+        self.top_p = llm_config.top_p
+        self.client = AsyncOpenAI(
+            api_key=llm_config.api_key, base_url=llm_config.base_url
+        )
+
+
 
     @staticmethod
     def format_messages(messages: List[Union[dict, Message]]) -> List[dict]:
@@ -362,6 +381,23 @@ class LLM:
                 messages = system_msgs + self.format_messages(messages)
             else:
                 messages = self.format_messages(messages)
+            logger.debug("\n".join([json.dumps(m, ensure_ascii=False) for m in messages]))
+            # Calculate input token count
+            input_tokens = self.count_message_tokens(messages)
+
+            # If there are tools, calculate token count for tool descriptions
+            tools_tokens = 0
+            if tools:
+                for tool in tools:
+                    tools_tokens += self.count_tokens(str(tool))
+
+            input_tokens += tools_tokens
+
+            # Check if token limits are exceeded
+            if not self.check_token_limit(input_tokens):
+                error_message = self.get_limit_error_message(input_tokens)
+                # Raise a special exception that won't be retried
+                raise TokenLimitExceeded(error_message)
 
             # Calculate input token count
             input_tokens = self.count_message_tokens(messages)
@@ -434,3 +470,34 @@ class LLM:
         except Exception as e:
             logger.error(f"Unexpected error in ask_tool: {e}")
             raise
+
+    async def get_embedding(
+        self,
+        content: str,
+        timeout: int = 60
+    ) -> str:
+        try:
+            response = await self.client.embeddings.create(
+                model=self.model,
+                input=content,
+                encoding_format="float",
+                timeout=timeout
+            )
+            return str(response.data[0].embedding)
+        except ValueError as ve:
+            logger.error(f"Validation error in ask_tool: {ve}")
+            raise
+        except OpenAIError as oe:
+            logger.error(f"OpenAI API error: {oe}")
+            if isinstance(oe, AuthenticationError):
+                logger.error("Authentication failed. Check API key.")
+            elif isinstance(oe, RateLimitError):
+                logger.error("Rate limit exceeded. Consider increasing retry attempts.")
+            elif isinstance(oe, APIError):
+                logger.error(f"API error: {oe}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in ask_tool: {e}")
+            raise
+
+llm_embeddings: LLM = LLM("embeddings")

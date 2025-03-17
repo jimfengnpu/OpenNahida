@@ -1,16 +1,24 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SkipValidation
+
+from app.agent.base import BaseAgent
 
 
 class BaseTool(ABC, BaseModel):
     name: str
     description: str
     parameters: Optional[dict] = None
+    wait: bool = True
+    call_back: Optional[Callable] = None
+    agent: Optional[BaseAgent] = None
 
     class Config:
         arbitrary_types_allowed = True
+
+    def set_agent(self, agent):
+        self.agent:BaseAgent = agent
 
     async def __call__(self, **kwargs) -> Any:
         """Execute the tool with given parameters."""
@@ -19,6 +27,9 @@ class BaseTool(ABC, BaseModel):
     @abstractmethod
     async def execute(self, **kwargs) -> Any:
         """Execute the tool with given parameters."""
+
+    def __str__(self):
+        return f"tool:{self.name}"
 
     def to_param(self) -> Dict:
         """Convert tool to function call format."""
@@ -30,6 +41,16 @@ class BaseTool(ABC, BaseModel):
                 "parameters": self.parameters,
             },
         }
+
+    def get_param_type(self, param_name) -> type:
+        params = self.parameters or {}
+        if not params:
+            return None
+        param_type = params['properties'][param_name]
+        if param_type == "string":
+            return str
+        elif param_type == "int" or param_type == "integer":
+            return int
 
 
 class ToolResult(BaseModel):
@@ -67,7 +88,7 @@ class ToolResult(BaseModel):
     def replace(self, **kwargs):
         """Returns a new ToolResult with the given fields replaced."""
         # return self.copy(update=kwargs)
-        return type(self)(**{**self.dict(), **kwargs})
+        return type(self)(**{**self.model_dump(), **kwargs})
 
 
 class CLIResult(ToolResult):

@@ -207,7 +207,8 @@ class PlanningAgent(ToolCallAgent):
                 f"Analyze the request and create a plan with ID {self.active_plan_id}: {request}"
             )
         ]
-        self.memory.add_messages(messages)
+        await self.update_memory_messages(messages)
+        # self.memory.add_messages(messages)
         response = await self.llm.ask_tool(
             messages=messages,
             system_msgs=[Message.system_message(self.system_prompt)],
@@ -218,7 +219,8 @@ class PlanningAgent(ToolCallAgent):
             content=response.content, tool_calls=response.tool_calls
         )
 
-        self.memory.add_message(assistant_msg)
+        await self.update_memory_message(assistant_msg)
+        # self.memory.add_message(assistant_msg)
 
         plan_created = False
         for tool_call in response.tool_calls:
@@ -234,7 +236,8 @@ class PlanningAgent(ToolCallAgent):
                     tool_call_id=tool_call.id,
                     name=tool_call.function.name,
                 )
-                self.memory.add_message(tool_msg)
+                await self.update_memory_message(tool_msg)
+                # self.memory.add_message(tool_msg)
                 plan_created = True
                 break
 
@@ -243,7 +246,8 @@ class PlanningAgent(ToolCallAgent):
             tool_msg = Message.assistant_message(
                 "Error: Parameter `plan_id` is required for command: create"
             )
-            self.memory.add_message(tool_msg)
+            await self.update_memory_message(tool_msg)
+            # self.memory.add_message(tool_msg)
 
 
 async def main():

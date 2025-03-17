@@ -4,9 +4,11 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.llm import LLM
+from app.llm import LLM, llm_embeddings
 from app.logger import logger
 from app.schema import ROLE_TYPE, AgentState, Memory, Message
+from uuid import uuid4
+from time import time
 
 
 class BaseAgent(BaseModel, ABC):
@@ -45,6 +47,9 @@ class BaseAgent(BaseModel, ABC):
         arbitrary_types_allowed = True
         extra = "allow"  # Allow extra fields for flexibility in subclasses
 
+    def __str__(self):
+        return f"agent:{self.name}"
+
     @model_validator(mode="after")
     def initialize_agent(self) -> "BaseAgent":
         """Initialize agent with default settings if not provided."""
@@ -80,7 +85,24 @@ class BaseAgent(BaseModel, ABC):
         finally:
             self.state = previous_state  # Revert to previous state
 
-    def update_memory(
+    async def update_memory_message(
+        self,
+        msg: Message
+    ):
+        msg.time = time()
+        msg.uuid = str(uuid4())
+        if msg.content:
+            msg.embeddings = await llm_embeddings.get_embedding(msg.content)
+        self.memory.add_message(msg)
+
+    async def update_memory_messages(
+        self,
+        messages: List[Message]
+    ):
+        for msg in messages:
+            await self.update_memory_message(msg)
+
+    async def update_memory(
         self,
         role: ROLE_TYPE,  # type: ignore
         content: str,
@@ -107,10 +129,10 @@ class BaseAgent(BaseModel, ABC):
             raise ValueError(f"Unsupported message role: {role}")
 
         msg_factory = message_map[role]
-        msg = msg_factory(content, **kwargs) if role == "tool" else msg_factory(content)
-        self.memory.add_message(msg)
+        msg: Message = msg_factory(content, **kwargs) if role == "tool" else msg_factory(content)
+        await self.update_memory_message(msg)
 
-    async def run(self, request: Optional[str] = None) -> str:
+    async def run(self, request: Optional[str] = None, role = "user") -> str:
         """Execute the agent's main loop asynchronously.
 
         Args:
@@ -125,8 +147,9 @@ class BaseAgent(BaseModel, ABC):
         if self.state != AgentState.IDLE:
             raise RuntimeError(f"Cannot run agent from state: {self.state}")
 
-        if request:
-            self.update_memory("user", request)
+        self.current_step = 0
+        if request and role == 'user':
+            await self.update_memory(role, request)
 
         results: List[str] = []
         async with self.state_context(AgentState.RUNNING):
@@ -191,3 +214,7 @@ class BaseAgent(BaseModel, ABC):
     def messages(self, value: List[Message]):
         """Set the list of messages in the agent's memory."""
         self.memory.messages = value
+
+    def close(self):
+        if self.memory:
+            self.memory.close()

@@ -94,6 +94,11 @@ class Config:
                     self._load_initial_config()
                     self._initialized = True
 
+    def reload(self):
+        with self._lock:
+            self._config = None
+            self._load_initial_config()
+
     @staticmethod
     def _get_config_path() -> Path:
         root = PROJECT_ROOT

@@ -3,7 +3,8 @@ from typing import Any, Dict, List
 
 from app.exceptions import ToolError
 from app.tool.base import BaseTool, ToolFailure, ToolResult
-
+from app.agent.base import BaseAgent
+from app.logger import logger
 
 class ToolCollection:
     """A collection of defined tools."""
@@ -14,17 +15,34 @@ class ToolCollection:
 
     def __iter__(self):
         return iter(self.tools)
+    
+    def set_agent(self, agent):
+        self.agent:BaseAgent = agent
+        for tool in self.tools:
+            tool.set_agent(agent=agent)
+
 
     def to_params(self) -> List[Dict[str, Any]]:
         return [tool.to_param() for tool in self.tools]
 
     async def execute(
-        self, *, name: str, tool_input: Dict[str, Any] = None
+        self, *, name: str, call_id:str, tool_input: Dict[str, Any] = None
     ) -> ToolResult:
         tool = self.tool_map.get(name)
         if not tool:
             return ToolFailure(error=f"Tool {name} is invalid")
         try:
+            if not tool.wait:
+                tool.call_back = lambda s: self.agent.update_memory('tool', content=s, name=name, tool_call_id=call_id)
+            for k,v in tool_input.items():
+                t = tool.get_param_type(k)
+                if not t:
+                    logger.warning(f"extra args:{k}:{v}({type(v)})")
+                    continue
+                if not isinstance(v, t):
+                    logger.warning(f"{k}:{v}({type(v)})")
+                    tool_input[k] = t(v)
+
             result = await tool(**tool_input)
             return result
         except ToolError as e:

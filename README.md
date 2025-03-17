@@ -1,3 +1,23 @@
+# OpenNahida
+
+This project is based on [OpenManus](https://github.com/mannaandpoem/OpenManus)
+
+## Feature Added
++ fullchatAgent with:
+long context db sqlite store
+ability to send message actively(implemented by sending prompt every random certain minutes)
++ async timer(currently no persistence, work only during runtime)
++ tool to send notify(on Linux platform)
++ llm config hot reload
+
+## Todo in the Future
++ timer use apscheduler(maybe need new version to support coroutine)
++ notification multi-platform
++ more possibility for role play agent with tool call
+
+## Note
+recommend llm: QwQ2.5-32b;Deepseek r1-671b;Chatgpt,etc..., must support tool calling
+
 <p align="center">
   <img src="assets/logo.jpg" width="200"/>
 </p>
