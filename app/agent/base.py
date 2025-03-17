@@ -47,7 +47,7 @@ class BaseAgent(BaseModel, ABC):
         arbitrary_types_allowed = True
         extra = "allow"  # Allow extra fields for flexibility in subclasses
 
-    def __str__(self):
+    def __repr__(self):
         return f"agent:{self.name}"
 
     @model_validator(mode="after")

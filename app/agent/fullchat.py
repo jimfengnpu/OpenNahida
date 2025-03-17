@@ -38,8 +38,8 @@ class FullChatAgent(ReActAgent):
     max_steps: int = 30
     min_active_check_minutes: int = 30
     max_active_check_minutes: int = 60
-    context_recent: int = 6
-    context_related: int = 4
+    context_recent: int = 4
+    context_related: int = 2
     active_check: bool = True
 
     def __init__(self, **kwargs):
@@ -218,7 +218,7 @@ class FullChatAgent(ReActAgent):
             logger.info(f"🏁 Special tool '{name}' has completed the task!")
             self.state = AgentState.FINISHED
 
-    async def active_check(self):
+    async def active_check_do(self):
         if self.state == AgentState.RUNNING:
             return
         ACTIVE_CHECK_PROMPT = """This request is automatically initiated by the system, you can respond or reply nothing, \
@@ -227,13 +227,13 @@ the response message will be regarded as an active message request, if the time 
         return await self.run(ACTIVE_CHECK_PROMPT, role='system')
 
     async def check_active(self):
-        print(f"\n{await self.active_check()}\n>>>", end="")
+        print(f"\n{await self.active_check_do()}\n>>>", end="")
         self.start_auto_active()
 
     def start_auto_active(self):
         interval = randint(self.min_active_check_minutes, self.max_active_check_minutes)
         logger.debug(f"System active check:{interval}minutes")
-        timer = AsyncTimer(interval*60, self.check_active, agent=self)
+        timer = AsyncTimer(interval*60, self.check_active)
         timer.start()
 
     @staticmethod

@@ -20,6 +20,9 @@ Profile:
             if may_internal_cmd == "exit":
                 logger.info("Goodbye!")
                 break
+            elif may_internal_cmd == "abort":
+                exit(-1)
+                break
             elif may_internal_cmd == "timers":
                 logger.info('\n'.join([str(t) for t in AsyncTimer.timers]))
                 continue

@@ -16,12 +16,11 @@ class AsyncTimer:
     def start(self):
         self._due_time = datetime.now().timestamp() + timedelta(seconds=self._timeout).total_seconds()
         self._task = asyncio.run_coroutine_threadsafe(self._job(), asyncio.get_event_loop())
-        self._task.add_done_callback(self.on_finish)
         if not self in self.timers:
             self.timers.append(self)
 
-    def __str__(self):
-        return f"Timer {self._due_time} state:{self._task.done()}"
+    def __repr__(self):
+        return f"Timer {self._due_time} state:{self._task.done() if self._task else True}"
 
     async def _job(self):
         try:
@@ -29,10 +28,9 @@ class AsyncTimer:
             await self._callback(**self._args)
         except CancelledError as e:
             pass
-
-    def on_finish(self, f):
-        AsyncTimer.timers.remove(self)
-        self._task = None
+        finally:
+            self.timers.remove(self)
+            self._task = None
 
     def cancel(self) -> bool:
         if self._task:
