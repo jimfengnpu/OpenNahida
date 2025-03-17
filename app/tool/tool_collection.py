@@ -37,10 +37,10 @@ class ToolCollection:
             for k,v in tool_input.items():
                 t = tool.get_param_type(k)
                 if not t:
-                    logger.warning(f"extra args:{k}:{v}({type(v)})")
+                    logger.debug(f"extra args:{k}:{v}({type(v)})")
                     continue
                 if not isinstance(v, t):
-                    logger.warning(f"{k}:{v}({type(v)})")
+                    logger.debug(f"{k}:{v}({type(v)}),get:{t}")
                     tool_input[k] = t(v)
 
             result = await tool(**tool_input)

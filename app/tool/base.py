@@ -46,7 +46,7 @@ class BaseTool(ABC, BaseModel):
         params = self.parameters or {}
         if not params:
             return None
-        param_type = params['properties'][param_name]
+        param_type = params['properties'][param_name]['type']
         if param_type == "string":
             return str
         elif param_type == "int" or param_type == "integer":

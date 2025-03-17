@@ -97,7 +97,7 @@ class FullChatAgent(ReActAgent):
         self.tool_calls = response.tool_calls
 
         if response.tool_calls:
-            logger.info(response.tool_calls)
+            logger.debug(response.tool_calls)
             logger.info(
                 f"🧰 Tools being prepared: {[call.function.name for call in response.tool_calls]}"
             )
@@ -179,7 +179,7 @@ class FullChatAgent(ReActAgent):
             # Parse arguments
             args = command.function.arguments.replace("\'", "\"")
 
-            logger.info(f"🔧 Activating tool: '{name}'...'{args}'")
+            logger.info(f"🔧 Activating tool: '{name}'...")
             while not isinstance(args, dict):
                 args = json.loads(args or "{}")
 
