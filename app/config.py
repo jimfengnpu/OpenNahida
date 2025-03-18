@@ -200,5 +200,10 @@ class Config:
     def search_config(self) -> Optional[SearchSettings]:
         return self._config.search_config
 
+    @property
+    def workspace_root(self) -> Path:
+        """Get the workspace root directory"""
+        return WORKSPACE_ROOT
+
 
 config = Config()
