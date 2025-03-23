@@ -1,3 +1,4 @@
+from app.schema import AgentState
 from app.tool.base import BaseTool, ToolResult
 from app.tool.bash import Bash
 from app.async_timer import AsyncTimer
@@ -6,7 +7,7 @@ from datetime import datetime, timedelta
 
 class UserNotify(BaseTool):
     name: str = "user_notify"
-    description: str = """Send a Notification to user, used for send messages actively or reminder.
+    description: str = """Send a Notification to user later, used for reminder.*Note: Do not use this to reply*
 Either notify_time or delay_minutes should be given to specify time to send notification.
 The tool return execue result.
 """
@@ -22,14 +23,14 @@ The tool return execue result.
                 "description": "(optional) The time when notification, must use `HH:MM`format, invalid time will be ignored. if set, delay_minutes has no effect"
             },
             "delay_minutes": {
-                "type": "int",
+                "type": "integer",
                 "description": "(optional) The time(by minute) when notification to send from now. Default is 0.",
                 "default": 0,
             },
         },
         "required": ["text"],
     }
-    wait: bool = False
+    # wait: bool = False
 
     async def execute(self, text: str, notify_time: str = "", delay_minutes: int = 0) -> ToolResult:
         """
@@ -49,18 +50,19 @@ The tool return execue result.
                 if notify_datetime < now:
                     notify_datetime += timedelta(days=1)
                 delay_minutes = (notify_datetime - now).total_seconds() //60
-                
+
             except ValueError:
                 logger.info(f"Invalid time str:{notify_time}")
             finally:
                 pass
         if delay_minutes == 0:
+            self.agent.state = AgentState.FINISHED
             await self.notify(text)
         else:
             t = AsyncTimer(60*delay_minutes, self.notify, text=text)
             t.start()
         return ToolResult(output="Notification successfully set")
-        
+
     async def notify(self, text: str = ""):
         logger.info("exec notify")
         if text:

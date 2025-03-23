@@ -7,20 +7,20 @@ class AsyncTimer:
     timers: List[Self] = []
 
     def __init__(self, timeout, callback, **kwargs):
-        self._due_time = 0.
+        self._due_time = None
         self._timeout = timeout
         self._callback = callback
         self._args = kwargs
         self._task = None
 
     def start(self):
-        self._due_time = datetime.now().timestamp() + timedelta(seconds=self._timeout).total_seconds()
+        self._due_time = datetime.now() + timedelta(seconds=self._timeout)
         self._task = asyncio.run_coroutine_threadsafe(self._job(), asyncio.get_event_loop())
         if not self in self.timers:
             self.timers.append(self)
 
     def __repr__(self):
-        return f"Timer {self._due_time} state:{self._task.done() if self._task else True}"
+        return f"Timer {self._due_time.isoformat()} state:{self._task.done() if self._task else True}"
 
     async def _job(self):
         try:

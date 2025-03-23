@@ -52,7 +52,7 @@ class Function(BaseModel):
         if isinstance(v, str):
             return v
         elif isinstance(v, dict):
-            return json.dumps(v)
+            return json.dumps(v, ensure_ascii=False)
 
 
 class ToolCall(BaseModel):
@@ -98,7 +98,7 @@ class Message(BaseModel):
         if isinstance(v, ToolCall):
             return v
         if v == None:
-            return None 
+            return None
         if isinstance(v, list):
             return v
         if isinstance(v, str):
@@ -157,7 +157,7 @@ class Message(BaseModel):
         if self.tool_call_id is not None:
             message["tool_call_id"] = self.tool_call_id
         return message
-    
+
     @property
     def sqlite_repr(self):
         return self.to_dict(all=True)
@@ -247,18 +247,18 @@ class Memory:
             all_messages = [m for m in self.db("Message")]
         all_messages = sorted(all_messages, key=lambda m: m.time)
         return all_messages[-n:]
-    
+
     def get_related_messages(self, msg: Message, n: int = 2) -> List[Message]:
         """Get n most related messages"""
         all_messages = self.messages
         if self.db:
-            all_messages = [m for m in self.db("Message")]
+            all_messages = [m for m in self.db("Message") if m.role != Role.TOOL]
         return sorted(all_messages, key=lambda m: embeddings_similarity(m.embeddings, msg.embeddings), reverse=True)[:n]
 
     def to_dict_list(self) -> List[dict]:
         """Convert messages to list of dicts"""
         return [msg.to_dict() for msg in self.messages]
-    
+
     def close(self):
         if self.backend_db_file:
             self.db.save(self.backend_db_file)

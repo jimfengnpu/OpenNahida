@@ -19,7 +19,7 @@ class Nahida(FullChatAgent):
     to handle a wide range of user requests.
     """
 
-    name: str = "Nahida"
+    name: str = "纳西妲"
     description: str = (
         "ai agent for nahida"
     )

@@ -31,8 +31,7 @@ Profile:
                 continue
             # logger.warning("Processing your request...")
             if prompt:
-                result  = await agent.run(prompt)
-                print(result)
+                await agent.run(prompt)
         except (Exception, asyncio.CancelledError, KeyboardInterrupt, EOFError)  as e:
             logger.error(e)
             traceback.print_exc()

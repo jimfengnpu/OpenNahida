@@ -165,7 +165,6 @@ class LLM:
         self.model = llm_config.model
         self.max_tokens = llm_config.max_tokens
         self.temperature = llm_config.temperature
-        self.top_p = llm_config.top_p
         self.client = AsyncOpenAI(
             api_key=llm_config.api_key, base_url=llm_config.base_url
         )
@@ -346,6 +345,8 @@ class LLM:
         tools: Optional[List[dict]] = None,
         tool_choice: TOOL_CHOICE_TYPE = ToolChoice.AUTO,  # type: ignore
         temperature: Optional[float] = None,
+        beta: bool = False,
+        response_format = None,
         **kwargs,
     ):
         """
@@ -428,6 +429,7 @@ class LLM:
                 "tools": tools,
                 "tool_choice": tool_choice,
                 "timeout": timeout,
+                "response_format": response_format,
                 **kwargs,
             }
 
@@ -438,8 +440,10 @@ class LLM:
                 params["temperature"] = (
                     temperature if temperature is not None else self.temperature
                 )
-
-            response = await self.client.chat.completions.create(**params)
+            if beta:
+                response = await self.client.beta.chat.completions.parse(**params)
+            else:
+                response = await self.client.chat.completions.create(**params)
 
             # Check if response is valid
             if not response.choices or not response.choices[0].message:

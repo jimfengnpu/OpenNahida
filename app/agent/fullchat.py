@@ -1,4 +1,3 @@
-from hashlib import md5
 import json
 from json import JSONDecodeError
 from random import randint
@@ -39,11 +38,12 @@ class FullChatAgent(ReActAgent):
     min_active_check_minutes: int = 30
     max_active_check_minutes: int = 60
     context_recent: int = 4
-    context_related: int = 2
-    active_check: bool = True
+    context_related: int = 0
+    active_check: bool = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.system_prompt += self.extra_system_prompt
         self.available_tools.set_agent(self)
         if self.active_check:
             self.start_auto_active()
@@ -55,9 +55,10 @@ class FullChatAgent(ReActAgent):
         response_result = self.messages[-1].content
         if should_act:
             result = await self.act()
-        if response_result:
+        if response_result and not self.tool_calls:
             self.state = AgentState.FINISHED
             result += f"\n{self.name}:{response_result}"
+        print(result, flush=True)
         return result
 
     async def think(self) -> bool:
@@ -83,13 +84,14 @@ class FullChatAgent(ReActAgent):
             else None,
             tools=self.available_tools.to_params(),
             tool_choice=self.tool_choices,
-            # response_format={"type": "json_object"},
+            response_format={"type": "json_object"},
         )
         try:
             logger.debug(response)
             response_text = response.content.split("</think>")[-1]
             start = response_text.find("{")
-            response_text = response_text[start:] if start != -1 else response_text
+            end = response_text.rfind("}")
+            response_text = response_text[start:end + 1] if start != -1 and end != -1 else response_text
             response_josn_dict = json.loads(response_text)
             response = ChatMessage(**response_josn_dict)
         except JSONDecodeError:
@@ -153,7 +155,7 @@ class FullChatAgent(ReActAgent):
         results = []
         for command in self.tool_calls:
             result = await self.execute_tool(command)
-            logger.info(
+            logger.debug(
                 f"🎯 Tool '{command.function.name}' completed its mission! Result: {result}"
             )
 
@@ -203,6 +205,10 @@ class FullChatAgent(ReActAgent):
                 f"📝 Oops! The arguments for '{name}' don't make sense - invalid JSON"
             )
             return f"Error: {error_msg}"
+        except KeyboardInterrupt:
+            error_msg = f"⚠️ Tool '{name}' interrupted by user"
+            logger.error(error_msg)
+            return f"Error: {error_msg}"
         except Exception as e:
             error_msg = f"⚠️ Tool '{name}' encountered a problem: {str(e)}"
             logger.error(error_msg)
@@ -227,7 +233,9 @@ the response message will be regarded as an active message request, if the time 
         return await self.run(ACTIVE_CHECK_PROMPT, role='system')
 
     async def check_active(self):
-        print(f"\n{await self.active_check_do()}\n>>>", end="")
+        print()
+        await self.active_check_do()
+        print("\n>>>", end="")
         self.start_auto_active()
 
     def start_auto_active(self):
