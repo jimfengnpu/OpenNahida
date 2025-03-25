@@ -198,42 +198,45 @@ class LLM:
             llm_config = llm_config or config.llm
             llm_config = llm_config.get(config_name, llm_config["default"])
             self.config_name = config_name
-            self.model = llm_config.model
-            self.max_tokens = llm_config.max_tokens
-            self.temperature = llm_config.temperature
-            self.api_type = llm_config.api_type
-            self.api_key = llm_config.api_key
-            self.api_version = llm_config.api_version
-            self.base_url = llm_config.base_url
+            self.init(llm_config)
 
-            # Add token counting related attributes
-            self.total_input_tokens = 0
-            self.total_completion_tokens = 0
-            self.max_input_tokens = (
-                llm_config.max_input_tokens
-                if hasattr(llm_config, "max_input_tokens")
-                else None
+    def init(self, llm_config):
+        self.model = llm_config.model
+        self.max_tokens = llm_config.max_tokens
+        self.temperature = llm_config.temperature
+        self.api_type = llm_config.api_type
+        self.api_key = llm_config.api_key
+        self.api_version = llm_config.api_version
+        self.base_url = llm_config.base_url
+
+        # Add token counting related attributes
+        self.total_input_tokens = 0
+        self.total_completion_tokens = 0
+        self.max_input_tokens = (
+            llm_config.max_input_tokens
+            if hasattr(llm_config, "max_input_tokens")
+            else None
+        )
+
+        # Initialize tokenizer
+        try:
+            self.tokenizer = tiktoken.encoding_for_model(self.model)
+        except KeyError:
+            # If the model is not in tiktoken's presets, use cl100k_base as default
+            self.tokenizer = tiktoken.get_encoding("cl100k_base")
+
+        if self.api_type == "azure":
+            self.client = AsyncAzureOpenAI(
+                base_url=self.base_url,
+                api_key=self.api_key,
+                api_version=self.api_version,
             )
+        elif self.api_type == "aws":
+            self.client = BedrockClient()
+        else:
+            self.client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 
-            # Initialize tokenizer
-            try:
-                self.tokenizer = tiktoken.encoding_for_model(self.model)
-            except KeyError:
-                # If the model is not in tiktoken's presets, use cl100k_base as default
-                self.tokenizer = tiktoken.get_encoding("cl100k_base")
-
-            if self.api_type == "azure":
-                self.client = AsyncAzureOpenAI(
-                    base_url=self.base_url,
-                    api_key=self.api_key,
-                    api_version=self.api_version,
-                )
-            elif self.api_type == "aws":
-                self.client = BedrockClient()
-            else:
-                self.client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
-
-            self.token_counter = TokenCounter(self.tokenizer)
+        self.token_counter = TokenCounter(self.tokenizer)
 
     def count_tokens(self, text: str) -> int:
         """Calculate the number of tokens in a text"""
@@ -277,13 +280,7 @@ class LLM:
         config.reload()
         llm_config = llm_config or config.llm
         llm_config = llm_config.get(config_name, llm_config["default"])
-        self.config_name = config_name
-        self.model = llm_config.model
-        self.max_tokens = llm_config.max_tokens
-        self.temperature = llm_config.temperature
-        self.client = AsyncOpenAI(
-            api_key=llm_config.api_key, base_url=llm_config.base_url
-        )
+        self.init(llm_config)
 
 
 

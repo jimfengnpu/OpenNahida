@@ -20,7 +20,7 @@ class AsyncTimer:
             self.timers.append(self)
 
     def __repr__(self):
-        return f"Timer {self._due_time.isoformat()} state:{self._task.done() if self._task else True}"
+        return f"Timer {str(self._due_time)} state:{self._task.done() if self._task else True}"
 
     async def _job(self):
         try:

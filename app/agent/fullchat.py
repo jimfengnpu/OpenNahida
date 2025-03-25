@@ -37,8 +37,8 @@ class FullChatAgent(ReActAgent):
     max_steps: int = 30
     min_active_check_minutes: int = 30
     max_active_check_minutes: int = 60
-    context_recent: int = 4
-    context_related: int = 0
+    context_recent: int = 3
+    context_related: int = 1
     active_check: bool = False
 
     def __init__(self, **kwargs):
@@ -55,27 +55,18 @@ class FullChatAgent(ReActAgent):
         response_result = self.messages[-1].content
         if should_act:
             result = await self.act()
-        if response_result and not self.tool_calls:
+        if response_result:
             self.state = AgentState.FINISHED
             result += f"\n{self.name}:{response_result}"
         print(result, flush=True)
         return result
 
     async def think(self) -> bool:
-        retrive_messages:List[Message] = []
-        if self.memory and len(self.messages) >= 1:
-            retrive_messages = self.memory.get_related_messages(self.messages[-1], self.context_related)
-        recent_messages: List[Message] = self.memory.get_recent_messages(self.context_recent)
         """Process current state and decide next actions using tools"""
-
+        context_messages = self.memory.get_context_messages(self.messages[-1], self.context_recent, self.context_related)
         # Get response with tool options
-        context_messages = retrive_messages
-        for msg in recent_messages:
-            if not msg in context_messages:
-                context_messages.append(msg)
-        context_messages = sorted(context_messages, key=lambda m: m.time)
         if self.next_step_prompt:
-            user_msg = Message.user_message(self.next_step_prompt + f"#timestamp:{datetime.now().isoformat()}")
+            user_msg = Message.user_message(self.next_step_prompt + f"#timestamp:{str(datetime.now())}")
             context_messages += [user_msg]
         response = await self.llm.ask_tool(
             messages=context_messages,

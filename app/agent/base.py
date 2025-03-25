@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, model_validator
 from app.llm import LLM, llm_embeddings
 from app.logger import logger
 from app.schema import ROLE_TYPE, AgentState, Memory, Message
-from uuid import uuid4
 from time import time
 
 
@@ -89,8 +88,7 @@ class BaseAgent(BaseModel, ABC):
         self,
         msg: Message
     ):
-        msg.time = time()
-        msg.uuid = str(uuid4())
+        msg.time = int(time()*1000)
         if msg.content:
             msg.embeddings = await llm_embeddings.get_embedding(msg.content)
         self.memory.add_message(msg)

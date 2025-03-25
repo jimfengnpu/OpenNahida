@@ -3,6 +3,7 @@ from typing import Any, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 from pydantic_sqlite import DataBase
+from datetime import datetime
 import numpy as np
 from os import path
 import json
@@ -90,8 +91,7 @@ class Message(BaseModel):
     tool_call_id: Optional[str] = Field(default=None)
     base64_image: Optional[str] = Field(default=None)
     embeddings: Optional[str] = Field(default="[]") # [str(float)]
-    uuid: str = Field(default="")
-    time: float = Field(default=0.)
+    time: int = Field(default=0)
 
     @field_validator('tool_calls', mode="before")
     @classmethod
@@ -108,11 +108,11 @@ class Message(BaseModel):
     def __add__(self, other) -> List["Message"]:
         """支持 Message + list 或 Message + Message 的操作"""
         if isinstance(other, list):
-            if self.uuid in [m.uid for m in other]:
+            if self.time in [m.time for m in other]:
                 return other
             return [self] + other
         elif isinstance(other, Message):
-            if other.uuid == self.uuid:
+            if other.time == self.time:
                 return [self]
             return [self, other]
         else:
@@ -123,7 +123,7 @@ class Message(BaseModel):
     def __radd__(self, other) -> List["Message"]:
         """支持 list + Message 的操作"""
         if isinstance(other, list):
-            if self.uuid in [m.uid for m in other]:
+            if self.time in [m.time for m in other]:
                 return other
             return other + [self]
         else:
@@ -146,7 +146,7 @@ class Message(BaseModel):
     def to_dict(self, all:bool = False) -> dict:
         """Convert message to dictionary format"""
         if all:
-            message = {"role": self.role, "uuid": self.uuid, "time": self.time, "embeddings": self.embeddings}
+            message = {"role": self.role, "time": self.time, "embeddings": self.embeddings}
         else:
             message = {"role": self.role}
         if self.content is not None:
@@ -243,7 +243,7 @@ class Memory:
     def add_message(self, message: Message) -> None:
         """Add to db"""
         if self.db:
-            self.db.add("Message", message)
+            self.db.add("Message", message, pk = "time")
         """Add a message to memory"""
         self.messages.append(message)
         # Optional: Implement message limit
@@ -254,7 +254,7 @@ class Memory:
         """Add to db"""
         if self.db:
             for msg in messages:
-                self.db.add("Message", msg)
+                self.db.add("Message", msg, pk = "time")
         """Add multiple messages to memory"""
         self.messages.extend(messages)
 
@@ -262,20 +262,59 @@ class Memory:
         """Clear all messages"""
         self.messages.clear()
 
+    @staticmethod
+    def _get_last_n_msgs(messages: List[Message], n: int):
+        r = []
+        c = 0
+        tool_call_ids = []
+        for m in messages[::-1]:
+            if m.role == Role.TOOL:
+                tool_call_ids.append(m.tool_call_id)
+                r.insert(0, m)
+                continue
+            if m.tool_calls:
+                for f in m.tool_calls:
+                    tool_call_ids.remove(f.id)
+            c += 1
+            if c >= n:
+                break
+            r.insert(0, m)
+        return r
+
+    @staticmethod
+    def _gen_context_msg(m: Message):
+        return Message(role=Role.USER, content=f"releated:{m.content}, time:{str(datetime.fromtimestamp(m.time/1000.0))}")
+
+
     def get_recent_messages(self, n: int) -> List[Message]:
         """Get n most recent messages"""
         all_messages = self.messages
         if self.db:
             all_messages = [m for m in self.db("Message")]
-        all_messages = sorted(all_messages, key=lambda m: m.time)
-        return all_messages[-n:]
+        # all_messages = sorted(all_messages, key=lambda m: m.time)
+        return Memory._get_last_n_msgs(all_messages, n)
 
-    def get_related_messages(self, msg: Message, n: int = 2) -> List[Message]:
+    def get_related_messages(self, msg: Message, n: int = 1) -> List[Message]:
         """Get n most related messages"""
         all_messages = self.messages
         if self.db:
-            all_messages = [m for m in self.db("Message") if m.role != Role.TOOL]
-        return sorted(all_messages, key=lambda m: embeddings_similarity(m.embeddings, msg.embeddings), reverse=True)[:n]
+            all_messages = [m for m in self.db("Message")]
+        mlist = sorted(all_messages, key=lambda m: embeddings_similarity(m.embeddings, msg.embeddings), reverse=True)[:n]
+        return [ Memory._gen_context_msg(m) for m in mlist]
+
+    def get_context_messages(self, msg: Message, n_recent: int, n_related: int = 1) -> List[Message]:
+        """Get n most related messages"""
+        all_messages = self.messages
+        if self.db:
+            all_messages = [m for m in self.db("Message")]
+        recent_list = Memory._get_last_n_msgs(all_messages, n_recent)
+        related_list = sorted(all_messages, key=lambda m: embeddings_similarity(m.embeddings, msg.embeddings), reverse=True)[:n_related]
+        context_list = []
+        for m in related_list:
+            if not m in recent_list:
+                context_list.append(Memory._gen_context_msg(m))
+        context_list.extend(recent_list)
+        return context_list
 
     def to_dict_list(self) -> List[dict]:
         """Convert messages to list of dicts"""
