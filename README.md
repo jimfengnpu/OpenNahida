@@ -18,7 +18,18 @@ ability to send message actively(implemented by sending prompt every random cert
 
 ## Note
 recommend llm: QwQ2.5-32b;Deepseek r1-671b; Deepseek v3 20250324; Chatgpt,etc..., must support tool calling
-termux need install termux-api for send notification
+### termux usage
+1. search and install app termux and termux:api
+2. prepare dependency
+```bash
+pkg install python-pip termux-api
+pip install -r requirements.txt --extra-index-url https://termux-user-respository.github.io/pypi/ # no offical wheel for pydantic, use extra index
+```
+3. prepare api config
+```bash
+cp config/config.example.toml config/config.toml
+vim config/config.toml # edit your api config
+```
 
 <p align="center">
   <img src="assets/logo.jpg" width="200"/>

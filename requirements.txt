@@ -1,7 +1,7 @@
 pydantic~=2.10.6
 pydantic_sqlite~=0.3.0
 pydantic_core~=2.27.2
-openai~=1.66.3
+openai
 tenacity~=9.0.0
 pyyaml~=6.0.2
 loguru~=0.7.3
@@ -14,6 +14,5 @@ unidiff~=0.7.5
 
 googlesearch-python~=1.3.0
 baidusearch~=1.0.3
-duckduckgo_search~=7.5.1
 
 aiofiles~=24.1.0
