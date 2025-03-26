@@ -1,6 +1,7 @@
 pydantic~=2.10.6
 pydantic_sqlite~=0.3.0
 pydantic_core~=2.27.2
+httpx==0.27
 openai
 tenacity~=9.0.0
 pyyaml~=6.0.2
