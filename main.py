@@ -23,8 +23,8 @@ Profile:
                 break
             elif may_internal_cmd == "next":
                 next_no_user_input = True
-                prompt = ""
-                break
+                await agent.run("")
+                continue
             elif may_internal_cmd == "abort":
                 exit(-1)
                 break

@@ -4,7 +4,6 @@ from app.agent.fullchat import FullChatAgent
 from app.prompt.nahida import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 from app.schema import Memory
 from app.tool import Terminate, ToolCollection
-from app.tool.browser_use_tool import BrowserUseTool
 from app.tool.file_saver import FileSaver
 from app.tool.web_search import WebSearch
 from app.tool.python_execute import PythonExecute
@@ -32,6 +31,6 @@ class Nahida(FullChatAgent):
     # Add general-purpose tools to the tool collection
     available_tools: ToolCollection = Field(
         default_factory=lambda: ToolCollection(
-            PythonExecute(), WebSearch(), BrowserUseTool(), FileSaver(), UserNotify(), Terminate()
+            PythonExecute(), WebSearch(), FileSaver(), UserNotify(), Terminate()
         )
     )
