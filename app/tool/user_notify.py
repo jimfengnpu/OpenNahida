@@ -67,6 +67,6 @@ The tool return execue result.
         logger.info("exec notify")
         if text:
             bash = Bash()
-            await bash.execute(f'notify-send -t 2000 -a "{self.agent.name}" "{text}"')
+            await bash.execute(f'termux-notification -t "{self.agent.name}" -c "{text}"')
         if self.call_back:
             await self.call_back("Notification successfully send")
