@@ -9,6 +9,7 @@ ability to send message actively(implemented by sending prompt every random cert
 + async timer(currently no persistence, work only during runtime)
 + tool to send notify(on Linux platform)
 + llm config hot reload
++ termux compatible(branch termux)
 
 ## Todo in the Future
 + timer use apscheduler(maybe need new version to support coroutine)
@@ -17,6 +18,7 @@ ability to send message actively(implemented by sending prompt every random cert
 
 ## Note
 recommend llm: QwQ2.5-32b;Deepseek r1-671b;Chatgpt,etc..., must support tool calling
+termux environ: termux-api needed
 
 <p align="center">
   <img src="assets/logo.jpg" width="200"/>

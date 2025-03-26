@@ -13,7 +13,6 @@ Profile:
 """
     loop = asyncio.get_event_loop()
     agent = Nahida(extra_system_prompt=UserInfoPrompt)
-    next_no_user_input = False
     while True:
         try:
             prompt = await loop.run_in_executor(None, input, ">>>")
@@ -22,9 +21,8 @@ Profile:
                 logger.info("Goodbye!")
                 break
             elif may_internal_cmd == "next":
-                next_no_user_input = True
-                prompt = ""
-                break
+                await agent.run("")
+                continue
             elif may_internal_cmd == "abort":
                 exit(-1)
                 break
@@ -35,7 +33,7 @@ Profile:
                 agent.llm.reload()
                 continue
             # logger.warning("Processing your request...")
-            if prompt or next_no_user_input:
+            if prompt:
                 await agent.run(prompt)
         except (Exception, asyncio.CancelledError, KeyboardInterrupt, EOFError)  as e:
             logger.error(e)
