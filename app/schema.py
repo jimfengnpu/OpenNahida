@@ -272,9 +272,15 @@ class Memory:
                 tool_call_ids.append(m.tool_call_id)
                 r.insert(0, m)
                 continue
+            skip = False
             if m.tool_calls:
                 for f in m.tool_calls:
-                    tool_call_ids.remove(f.id)
+                    if f.id in tool_call_ids:
+                        tool_call_ids.remove(f.id)
+                    else:
+                        skip = True
+            if skip:
+                continue
             c += 1
             if c >= n:
                 break
@@ -308,7 +314,7 @@ class Memory:
         if self.db:
             all_messages = [m for m in self.db("Message")]
         recent_list = Memory._get_last_n_msgs(all_messages, n_recent)
-        related_list = sorted(all_messages, key=lambda m: embeddings_similarity(m.embeddings, msg.embeddings), reverse=True)[:n_related]
+        related_list = sorted(all_messages, key=lambda m: embeddings_similarity(m.embeddings, msg.embeddings), reverse=True)[:n_related] if msg else []
         context_list = []
         for m in related_list:
             if not m in recent_list:
