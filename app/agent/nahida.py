@@ -32,6 +32,6 @@ class Nahida(FullChatAgent):
     # Add general-purpose tools to the tool collection
     available_tools: ToolCollection = Field(
         default_factory=lambda: ToolCollection(
-            PythonExecute(), WebSearch(), BrowserUseTool(), FileSaver(), UserNotify(), Terminate()
+            PythonExecute(), WebSearch(), FileSaver(), UserNotify(), Terminate()
         )
     )

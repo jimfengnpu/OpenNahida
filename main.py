@@ -2,17 +2,14 @@ import asyncio
 
 from app.agent.nahida import Nahida
 from app.logger import logger
+from app.config import config
 from app.async_timer import AsyncTimer
 import traceback
 
 
 async def main():
-    UserInfoPrompt = """#User Info:
-Name:
-Profile:
-"""
     loop = asyncio.get_event_loop()
-    agent = Nahida(extra_system_prompt=UserInfoPrompt)
+    agent = Nahida(extra_system_prompt=config.agent_config.extra_prompt)
     while True:
         try:
             prompt = await loop.run_in_executor(None, input, ">>>")

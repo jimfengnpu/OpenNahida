@@ -237,6 +237,8 @@ class Memory:
             self.backend_db_file = backend_db_file
             if path.exists(self.backend_db_file):
                 self.db.load(self.backend_db_file)
+                self.messages = [m for m in self.db("Message")]
+
     def __init__(self, **kwargs):
         self.init(**kwargs)
 
@@ -272,9 +274,15 @@ class Memory:
                 tool_call_ids.append(m.tool_call_id)
                 r.insert(0, m)
                 continue
+            skip = False
             if m.tool_calls:
                 for f in m.tool_calls:
-                    tool_call_ids.remove(f.id)
+                    if f.id in tool_call_ids:
+                        tool_call_ids.remove(f.id)
+                    else:
+                        skip = True
+            if skip:
+                continue
             c += 1
             if c >= n:
                 break
@@ -289,26 +297,20 @@ class Memory:
     def get_recent_messages(self, n: int) -> List[Message]:
         """Get n most recent messages"""
         all_messages = self.messages
-        if self.db:
-            all_messages = [m for m in self.db("Message")]
         # all_messages = sorted(all_messages, key=lambda m: m.time)
         return Memory._get_last_n_msgs(all_messages, n)
 
     def get_related_messages(self, msg: Message, n: int = 1) -> List[Message]:
         """Get n most related messages"""
         all_messages = self.messages
-        if self.db:
-            all_messages = [m for m in self.db("Message")]
         mlist = sorted(all_messages, key=lambda m: embeddings_similarity(m.embeddings, msg.embeddings), reverse=True)[:n]
         return [ Memory._gen_context_msg(m) for m in mlist]
 
     def get_context_messages(self, msg: Message, n_recent: int, n_related: int = 1) -> List[Message]:
         """Get n most related messages"""
         all_messages = self.messages
-        if self.db:
-            all_messages = [m for m in self.db("Message")]
         recent_list = Memory._get_last_n_msgs(all_messages, n_recent)
-        related_list = sorted(all_messages, key=lambda m: embeddings_similarity(m.embeddings, msg.embeddings), reverse=True)[:n_related]
+        related_list = sorted(all_messages, key=lambda m: embeddings_similarity(m.embeddings, msg.embeddings), reverse=True)[:n_related] if msg else []
         context_list = []
         for m in related_list:
             if not m in recent_list:

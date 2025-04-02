@@ -75,6 +75,11 @@ class BrowserSettings(BaseModel):
         2000, description="Maximum length for content retrieval operations"
     )
 
+class AgentSettings(BaseModel):
+    extra_prompt: Optional[str] = Field(
+        "", description="extra system prompt for fullchat agent"
+    )
+
 
 class AppConfig(BaseModel):
     llm: Dict[str, LLMSettings]
@@ -83,6 +88,9 @@ class AppConfig(BaseModel):
     )
     search_config: Optional[SearchSettings] = Field(
         None, description="Search configuration"
+    )
+    agent_config: Optional[AgentSettings] = Field(
+        None, description="Agent configuration"
     )
 
     class Config:
@@ -185,7 +193,10 @@ class Config:
         search_settings = None
         if search_config:
             search_settings = SearchSettings(**search_config)
-
+        agent_config = raw_config.get("agent", {})
+        agent_settings = None
+        if agent_config:
+            agent_settings = AgentSettings(**agent_config)
         config_dict = {
             "llm": {
                 "default": default_settings,
@@ -196,6 +207,7 @@ class Config:
             },
             "browser_config": browser_settings,
             "search_config": search_settings,
+            "agent_config": agent_settings,
         }
 
         self._config = AppConfig(**config_dict)
@@ -211,6 +223,10 @@ class Config:
     @property
     def search_config(self) -> Optional[SearchSettings]:
         return self._config.search_config
+
+    @property
+    def agent_config(self) -> Optional[AgentSettings]:
+        return self._config.agent_config
 
     @property
     def workspace_root(self) -> Path:

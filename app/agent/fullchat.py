@@ -63,7 +63,7 @@ class FullChatAgent(ReActAgent):
 
     async def think(self) -> bool:
         """Process current state and decide next actions using tools"""
-        context_messages = self.memory.get_context_messages(self.messages[-1], self.context_recent, self.context_related)
+        context_messages = self.memory.get_context_messages(self.messages[-1] if len(self.messages) >= 1 else None, self.context_recent, self.context_related)
         # Get response with tool options
         if self.next_step_prompt:
             user_msg = Message.user_message(self.next_step_prompt + f"#timestamp:{str(datetime.now())}")
