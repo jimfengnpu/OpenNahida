@@ -77,16 +77,17 @@ class FullChatAgent(ReActAgent):
             tool_choice=self.tool_choices,
             response_format={"type": "json_object"},
         )
-        try:
-            logger.debug(response)
-            response_text = response.content.split("</think>")[-1]
-            start = response_text.find("{")
-            end = response_text.rfind("}")
-            response_text = response_text[start:end + 1] if start != -1 and end != -1 else response_text
-            response_josn_dict = json.loads(response_text)
-            response = ChatMessage(**response_josn_dict)
-        except JSONDecodeError:
-            pass
+        logger.debug(response)
+        if response.content:
+            try:
+                response_text = response.content.split("</think>")[-1]
+                start = response_text.find("{")
+                end = response_text.rfind("}")
+                response_text = response_text[start:end + 1] if start != -1 and end != -1 else response_text
+                response_josn_dict = json.loads(response_text)
+                response = ChatMessage(**response_josn_dict)
+            except JSONDecodeError:
+                pass
         self.tool_calls = response.tool_calls
 
         if response.tool_calls:
