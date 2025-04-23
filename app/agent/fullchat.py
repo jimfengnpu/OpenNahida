@@ -37,7 +37,7 @@ class FullChatAgent(ReActAgent):
     max_steps: int = 30
     min_active_check_minutes: int = 30
     max_active_check_minutes: int = 60
-    context_recent: int = 3
+    context_recent: int = 4
     context_related: int = 1
     active_check: bool = False
 
@@ -77,16 +77,17 @@ class FullChatAgent(ReActAgent):
             tool_choice=self.tool_choices,
             response_format={"type": "json_object"},
         )
-        try:
-            logger.debug(response)
-            response_text = response.content.split("</think>")[-1]
-            start = response_text.find("{")
-            end = response_text.rfind("}")
-            response_text = response_text[start:end + 1] if start != -1 and end != -1 else response_text
-            response_josn_dict = json.loads(response_text)
-            response = ChatMessage(**response_josn_dict)
-        except JSONDecodeError:
-            pass
+        if response.content:
+            try:
+                logger.debug(response)
+                response_text = response.content.split("</think>")[-1]
+                start = response_text.find("{")
+                end = response_text.rfind("}")
+                response_text = response_text[start:end + 1] if start != -1 and end != -1 else response_text
+                response_josn_dict = json.loads(response_text)
+                response = ChatMessage(**response_josn_dict)
+            except JSONDecodeError:
+                pass
         self.tool_calls = response.tool_calls
 
         if response.tool_calls:
