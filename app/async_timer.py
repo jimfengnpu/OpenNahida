@@ -29,7 +29,7 @@ class AsyncTimer:
     def add_event(cls, id, time, args = {}):
         current = datetime.now().timestamp()
         if time > current:
-            t:Self = cls.__new__()
+            t:Self = cls.__new__(cls)
             t.__init__(timeout=time - current, callback_id=id, **args)
             t._start()
 
