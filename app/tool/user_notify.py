@@ -5,6 +5,7 @@ from app.async_timer import AsyncTimer
 from app.logger import logger
 from datetime import datetime, timedelta
 
+TIMER_ID_USER_NOTIFY = "notify"
 class UserNotify(BaseTool):
     name: str = "user_notify"
     description: str = """Send a Notification to user later, used for reminder.*Note: Do not use this to reply*
@@ -32,6 +33,10 @@ The tool return execue result.
     }
     # wait: bool = False
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        AsyncTimer.register_event(TIMER_ID_USER_NOTIFY, self.notify)
+
     async def execute(self, text: str, notify_time: str = "", delay_minutes: int = 0) -> ToolResult:
         """
         Execute a async notify task and return.
@@ -41,16 +46,16 @@ The tool return execue result.
             delay_minutes (int, optional): The time of minute delay to notify. Default is 0.
 
         """
+        now = datetime.now()
+        timestamp = now.timestamp() + 60*delay_minutes # default fallback
         if notify_time:
             try:
-                now = datetime.now()
                 date = now.date()
                 time = datetime.strptime(notify_time, "%H:%M").time()
                 notify_datetime = datetime.combine(date, time)
                 if notify_datetime < now:
                     notify_datetime += timedelta(days=1)
-                delay_minutes = (notify_datetime - now).total_seconds() //60
-
+                timestamp = notify_datetime.timestamp()
             except ValueError:
                 logger.info(f"Invalid time str:{notify_time}")
             finally:
@@ -59,8 +64,7 @@ The tool return execue result.
             self.agent.state = AgentState.FINISHED
             await self.notify(text)
         else:
-            t = AsyncTimer(60*delay_minutes, self.notify, text=text)
-            t.start()
+            AsyncTimer.add_event(TIMER_ID_USER_NOTIFY, timestamp, {'text': text})
         return ToolResult(output="Notification successfully set")
 
     async def notify(self, text: str = ""):

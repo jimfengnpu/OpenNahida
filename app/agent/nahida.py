@@ -24,7 +24,7 @@ class Nahida(FullChatAgent):
         "ai agent for nahida"
     )
 
-    memory: Memory = Memory(backend_db_file="data/db/nahida.db")
+    # memory: Memory = Memory(backend_db_file="data/db/nahida.db")
 
     system_prompt: str = SYSTEM_PROMPT
     next_step_prompt: str = NEXT_STEP_PROMPT

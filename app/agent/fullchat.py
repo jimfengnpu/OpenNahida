@@ -14,7 +14,7 @@ from app.tool import CreateChatCompletion, Terminate, ToolCollection
 
 
 TOOL_CALL_REQUIRED = "Tool calls required but none provided"
-
+TIMER_ID_AGENT_ACTIVE = "agent_active"
 
 class FullChatAgent(ReActAgent):
     """Agent class for and handling tool/function calls/chat"""
@@ -46,6 +46,7 @@ class FullChatAgent(ReActAgent):
         self.system_prompt += self.extra_system_prompt
         self.available_tools.set_agent(self)
         if self.active_check:
+            AsyncTimer.register_event(TIMER_ID_AGENT_ACTIVE, self.check_active)
             self.start_auto_active()
 
     async def step(self) -> str:
@@ -233,8 +234,7 @@ the response message will be regarded as an active message request, if the time 
     def start_auto_active(self):
         interval = randint(self.min_active_check_minutes, self.max_active_check_minutes)
         logger.debug(f"System active check:{interval}minutes")
-        timer = AsyncTimer(interval*60, self.check_active)
-        timer.start()
+        AsyncTimer.add_event(TIMER_ID_AGENT_ACTIVE, datetime.now().timestamp() + 60*interval)
 
     @staticmethod
     def _should_finish_execution(**kwargs) -> bool:
