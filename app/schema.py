@@ -232,7 +232,7 @@ class Memory:
 
     def init(self, backend_db_file: str = ""):
         if not hasattr(self, "db"):
-            self.db = DataBase()
+            self.db = DataBase(memory_name=backend_db_file)
         if backend_db_file:
             self.backend_db_file = backend_db_file
             if path.exists(self.backend_db_file):
@@ -322,6 +322,9 @@ class Memory:
         """Convert messages to list of dicts"""
         return [msg.to_dict() for msg in self.messages]
 
-    def close(self):
+    def save(self):
         if self.backend_db_file:
             self.db.save(self.backend_db_file)
+
+    def close(self):
+        self.save()
