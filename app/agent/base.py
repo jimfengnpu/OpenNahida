@@ -164,7 +164,7 @@ class BaseAgent(BaseModel, ABC):
                 if self.is_stuck():
                     self.handle_stuck_state()
 
-                results.append(f"Step {self.current_step}: {step_result}")
+                results.append(step_result)
 
             if self.current_step >= self.max_steps:
                 self.current_step = 0

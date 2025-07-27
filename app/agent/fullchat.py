@@ -15,6 +15,15 @@ from app.tool import CreateChatCompletion, Terminate, ToolCollection
 
 TOOL_CALL_REQUIRED = "Tool calls required but none provided"
 TIMER_ID_AGENT_ACTIVE = "agent_active"
+JSON_MODE = False
+
+JSON_MODE_NEXT_PROMPT = """
+回复格式(JSON)
+{"content": "<string> text reply to user",
+"tool_calls": [{"id": "<string>","type": "function",
+"function": { "name": "<string>tool name", "arguments": "<json valid string>{'arg_name': <arg_type>arg_value}"}
+}]
+}"""
 
 class FullChatAgent(ReActAgent):
     """Agent class for and handling tool/function calls/chat"""
@@ -37,8 +46,8 @@ class FullChatAgent(ReActAgent):
     max_steps: int = 30
     min_active_check_minutes: int = 30
     max_active_check_minutes: int = 60
-    context_recent: int = 4
-    context_related: int = 1
+    context_recent: int = 5
+    context_related: int = 2
     active_check: bool = False
 
     def __init__(self, **kwargs):
@@ -59,7 +68,6 @@ class FullChatAgent(ReActAgent):
         if response_result:
             self.state = AgentState.FINISHED
             result += f"\n{self.name}:{response_result}"
-        print(result, flush=True)
         return result
 
     async def think(self) -> bool:
@@ -67,7 +75,9 @@ class FullChatAgent(ReActAgent):
         context_messages = self.memory.get_context_messages(self.messages[-1] if len(self.messages) >= 1 else None, self.context_recent, self.context_related)
         # Get response with tool options
         if self.next_step_prompt:
-            user_msg = Message.user_message(self.next_step_prompt + f"#timestamp:{str(datetime.now())}")
+            user_msg = Message.user_message(self.next_step_prompt +
+                                            JSON_MODE_NEXT_PROMPT if JSON_MODE else "" +
+                                            f"\n[SystemGenerated]#current time:{str(datetime.now())}" )
             context_messages += [user_msg]
         response = await self.llm.ask_tool(
             messages=context_messages,
@@ -76,19 +86,21 @@ class FullChatAgent(ReActAgent):
             else None,
             tools=self.available_tools.to_params(),
             tool_choice=self.tool_choices,
-            response_format={"type": "json_object"},
+            response_format={"type": "json_object"} if JSON_MODE else None,
         )
+        logger.debug(response)
         if response.content:
-            try:
-                logger.debug(response)
-                response_text = response.content.split("</think>")[-1]
-                start = response_text.find("{")
-                end = response_text.rfind("}")
-                response_text = response_text[start:end + 1] if start != -1 and end != -1 else response_text
-                response_josn_dict = json.loads(response_text)
-                response = ChatMessage(**response_josn_dict)
-            except JSONDecodeError:
-                pass
+            response_text = response.content.split("</think>")[-1]
+            response.content = response_text
+            if JSON_MODE:
+                try:
+                    start = response_text.find("{")
+                    end = response_text.rfind("}")
+                    response_text = response_text[start:end + 1] if start != -1 and end != -1 else response_text
+                    response_josn_dict = json.loads(response_text)
+                    response = ChatMessage(**response_josn_dict)
+                except JSONDecodeError:
+                    pass
         self.tool_calls = response.tool_calls
 
         if response.tool_calls:
@@ -172,11 +184,11 @@ class FullChatAgent(ReActAgent):
 
         try:
             # Parse arguments
-            args = command.function.arguments.replace("\'", "\"")
+            args = json.loads(command.function.arguments or "{}")
 
             logger.info(f"🔧 Activating tool: '{name}'...")
-            while not isinstance(args, dict):
-                args = json.loads(args or "{}")
+            # while not isinstance(args, dict):
+            #     args = json.loads(args or "{}")
 
             # Execute the tool
             result = await self.available_tools.execute(name=name, call_id=command.id, tool_input=args)

@@ -13,12 +13,13 @@ async def main():
     while True:
         try:
             prompt = await loop.run_in_executor(None, input, ">>>")
+            result = ""
             may_internal_cmd = prompt.lower()
             if may_internal_cmd == "exit":
                 logger.info("Goodbye!")
                 break
             elif may_internal_cmd == "next":
-                await agent.run("")
+                result = await agent.run("")
                 continue
             elif may_internal_cmd == "abort":
                 exit(-1)
@@ -31,7 +32,9 @@ async def main():
                 continue
             # logger.warning("Processing your request...")
             if prompt:
-                await agent.run(prompt)
+                result = await agent.run(prompt)
+            if result:
+                print(result)
         except (Exception, asyncio.CancelledError, KeyboardInterrupt, EOFError)  as e:
             logger.error(e)
             traceback.print_exc()
