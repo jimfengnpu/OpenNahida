@@ -61,14 +61,12 @@ class FullChatAgent(ReActAgent):
     async def step(self) -> str:
         """Execute a single step: think and act until exist response."""
         result_all = f"\n{self.name}: "
-        need_think = True
-        while need_think:
+        while AgentState.FINISHED != self.state:
             should_act = await self.think()
             response_result = self.messages[-1].content.strip()
             if should_act:
                 result_all += await self.act()
             if response_result:
-                need_think = False
                 self.state = AgentState.FINISHED
                 result_all += f"{response_result}\n"
         return result_all
